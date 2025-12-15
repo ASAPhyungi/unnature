@@ -1,17 +1,18 @@
-let bigCircle;
-let smallCircles = [];
+let redBigCircle, blueBigCircle;
+let redSmallCircles = [];
+let blueSmallCircles = [];
 let dots = []; 
 
 
 let attractorStrength = 0.05;
 let repulsionStrength = 0.5;
-let maxSmallCircles = 50;
+let maxSmallCircles = 50; 
 
 function setup() {
   createCanvas(600, 600);
 
-  let dotRadius = 3; 
-  let gap = 15;     
+  let dotRadius = 3;
+  let gap = 15;
 
   for (let y = gap / 2; y < height; y += gap) {
     for (let x = gap / 2; x < width; x += gap) {
@@ -19,26 +20,37 @@ function setup() {
     }
   }
 
-  bigCircle = new BigCircle();
+  redBigCircle = new BigCircle(width * 0.3, height * 0.5);
+  blueBigCircle = new BigCircle(width * 0.7, height * 0.5);
 }
 
 function draw() {
   background(20, 20, 40);
 
+  redBigCircle.update();
+  redBigCircle.checkEdges();
+  
+  updateSwarm(redSmallCircles, redBigCircle);
 
-  bigCircle.update();
-  bigCircle.checkEdges();
+  blueBigCircle.update();
+  blueBigCircle.checkEdges();
 
-  for (let i = smallCircles.length - 1; i >= 0; i--) {
-    let sc = smallCircles[i];
-    
+  updateSwarm(blueSmallCircles, blueBigCircle);
+  for (let dot of dots) {
+    dot.checkCollision(redBigCircle, redSmallCircles, blueBigCircle, blueSmallCircles);
+    dot.display();
+  }
+}
+function updateSwarm(swarmArray, attractor) {
+  for (let i = swarmArray.length - 1; i >= 0; i--) {
+    let sc = swarmArray[i];
 
-    let attraction = p5.Vector.sub(bigCircle.position, sc.position);
+    let attraction = p5.Vector.sub(attractor.position, sc.position);
     attraction.setMag(attractorStrength);
     sc.applyForce(attraction);
 
-    for (let j = smallCircles.length - 1; j >= 0; j--) {
-      let other = smallCircles[j];
+    for (let j = swarmArray.length - 1; j >= 0; j--) {
+      let other = swarmArray[j];
       if (sc !== other) {
         let distance = p5.Vector.dist(sc.position, other.position);
         if (distance < sc.r + other.r) {
@@ -49,18 +61,20 @@ function draw() {
       }
     }
     sc.update();
-
-  }
-
-  for (let dot of dots) {
-    dot.checkCollision(bigCircle, smallCircles); 
-    dot.display(); 
   }
 }
 
 function mousePressed() {
-  if (smallCircles.length < maxSmallCircles) {
-    smallCircles.push(new SmallCircle(mouseX, mouseY));
+  let choice = random(1);
+
+  if (choice < 0.5) {
+    if (redSmallCircles.length < maxSmallCircles) {
+      redSmallCircles.push(new SmallCircle(mouseX, mouseY));
+    }
+  } else {
+    if (blueSmallCircles.length < maxSmallCircles) {
+      blueSmallCircles.push(new SmallCircle(mouseX, mouseY));
+    }
   }
 }
 
@@ -70,27 +84,45 @@ class Dot {
     this.position = createVector(x, y);
     this.r = r;
     this.baseColor = color(255);
-    this.activeColor = color(255, 50, 50); 
+    this.redColor = color(255, 50, 50);
+    this.blueColor = color(50, 100, 255);
+    this.mixColor = color(200, 50, 200);
     this.currentColor = this.baseColor;
   }
 
-  checkCollision(bigC, smallCs) {
-    this.currentColor = this.baseColor;
+  checkCollision(redBig, redSmalls, blueBig, blueSmalls) {
+    let touchedRed = false;
+    let touchedBlue = false;
 
-    let dBig = dist(this.position.x, this.position.y, bigC.position.x, bigC.position.y);
-    
-
-    if (dBig < this.r + bigC.r) {
-      this.currentColor = this.activeColor;
-      return; 
+    if (dist(this.position.x, this.position.y, redBig.position.x, redBig.position.y) < this.r + redBig.r) {
+      touchedRed = true;
+    } else {
+      for (let sc of redSmalls) {
+        if (dist(this.position.x, this.position.y, sc.position.x, sc.position.y) < this.r + sc.r) {
+          touchedRed = true;
+          break;
+        }
+      }
+    }
+    if (dist(this.position.x, this.position.y, blueBig.position.x, blueBig.position.y) < this.r + blueBig.r) {
+      touchedBlue = true;
+    } else {
+      for (let sc of blueSmalls) {
+        if (dist(this.position.x, this.position.y, sc.position.x, sc.position.y) < this.r + sc.r) {
+          touchedBlue = true;
+          break;
+        }
+      }
     }
 
-    for (let sc of smallCs) {
-      let dSmall = dist(this.position.x, this.position.y, sc.position.x, sc.position.y);
-      if (dSmall < this.r + sc.r) {
-        this.currentColor = this.activeColor;
-        break; 
-      }
+    if (touchedRed && touchedBlue) {
+      this.currentColor = this.mixColor;
+    } else if (touchedRed) {
+      this.currentColor = this.redColor;
+    } else if (touchedBlue) {
+      this.currentColor = this.blueColor;
+    } else {
+      this.currentColor = this.baseColor;
     }
   }
 
@@ -102,8 +134,8 @@ class Dot {
 }
 
 class BigCircle {
-  constructor() {
-    this.position = createVector(width / 2, height / 2);
+  constructor(x, y) {
+    this.position = createVector(x, y);
     this.velocity = p5.Vector.random2D();
     this.velocity.mult(3);
     this.r = 40; 
@@ -133,8 +165,6 @@ class BigCircle {
       this.velocity.y *= -1;
     }
   }
-  
-
 }
 
 class SmallCircle {
