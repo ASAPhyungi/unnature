@@ -15,11 +15,14 @@ class Grid {
       let touchA = groupA.isTouching(d.pos, d.r);
       let touchB = groupB.isTouching(d.pos, d.r);
 
-      if (touchA && touchB) fill(200, 50, 200);
-      else if (touchA) fill(groupA.color);
-      else if (touchB) fill(groupB.color);
-      else fill(255, 50);
-
+      if (touchA && touchB){
+        fill(0,255,0);
+      }else if (touchA){ 
+      fill(groupA.color);
+      } else if (touchB) {
+        fill(groupB.color);
+      }else {fill(255);
+      }
       ellipse(d.pos.x, d.pos.y, d.r * 2);
     }
   }
